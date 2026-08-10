@@ -1,0 +1,5 @@
+cryptography>=45,<51
+fonttools[woff]>=4,<5
+pillow>=11,<13
+qrcode>=8,<9
+tkinterdnd2>=0.4,<1
