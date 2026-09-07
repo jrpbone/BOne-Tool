@@ -6,6 +6,8 @@ import hmac
 import json
 import os
 import shutil
+import sys
+import webbrowser
 import tkinter as tk
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, ttk
@@ -18,14 +20,19 @@ from fontTools.ttLib import TTCollection, TTFont, TTLibError
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps, ImageTk, UnidentifiedImageError
 import qrcode
 from tkinterdnd2 import DND_FILES, TkinterDnD
+from modules.alphabet_print import build_print_pdf
 
 
 ALGORITHMS = ("sha256", "sha512", "sha3_256", "sha3_512", "blake2b", "blake2s", "sha1", "md5")
 MAGIC = b"OC1"
 SALT_BYTES = 16
 NONCE_BYTES = 12
-APP_DIR = Path(__file__).parent
-FONT_DIR = APP_DIR / "fonts"
+BUNDLE_DIR = Path(__file__).resolve().parent
+APP_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else BUNDLE_DIR
+FONT_DIR = (
+    Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "BOneTool" / "fonts"
+    if getattr(sys, "frozen", False) else APP_DIR / "fonts"
+)
 FONT_EXTENSIONS = {".ttf", ".otf", ".ttc", ".woff", ".woff2"}
 DESKTOP_FONT_EXTENSIONS = {".ttf", ".otf", ".ttc"}
 ASCII_CHARS = "@%#*+=-:. "
@@ -481,6 +488,7 @@ class BOneTool(TkinterDnD.Tk):
         self._button(
             custom_actions, "Copy letters", lambda: self.copy_text(self.alphabet_custom, self.alphabet_status)
         ).grid(row=0, column=1)
+        self._button(custom_actions, "Print", self.print_alphabet).grid(row=1, column=1, pady=(8, 0))
         return page
 
     def _build_ascii_page(self, parent: tk.Widget) -> tk.Frame:
@@ -693,7 +701,7 @@ class BOneTool(TkinterDnD.Tk):
         if suffix not in FONT_EXTENSIONS:
             raise ValueError(f"Unsupported font type: {suffix or 'no extension'}")
         font_families(source)
-        FONT_DIR.mkdir(exist_ok=True)
+        FONT_DIR.mkdir(parents=True, exist_ok=True)
 
         if suffix in {".woff", ".woff2"}:
             font = TTFont(source)
@@ -715,7 +723,12 @@ class BOneTool(TkinterDnD.Tk):
         return destination
 
     def refresh_fonts(self) -> None:
-        FONT_DIR.mkdir(exist_ok=True)
+        FONT_DIR.mkdir(parents=True, exist_ok=True)
+        if getattr(sys, "frozen", False):
+            for bundled in (BUNDLE_DIR / "fonts").iterdir():
+                destination = FONT_DIR / bundled.name
+                if bundled.is_file() and not destination.exists():
+                    shutil.copy2(bundled, destination)
         for source in list(APP_DIR.iterdir()) + list(FONT_DIR.glob("*.woff*")):
             if source.is_file() and source.suffix.lower() in FONT_EXTENSIONS:
                 try:
@@ -980,6 +993,33 @@ class BOneTool(TkinterDnD.Tk):
         target.delete("1.0", "end")
         target.insert("1.0", value)
         self.alphabet_status.set(f"{self.selected_font_family()} / {len(value):,} characters")
+
+    def print_alphabet(self) -> None:
+        try:
+            if self.font_choice.get() not in self.font_choices:
+                raise ValueError("Select or import a custom font first.")
+            value = self._get(self.alphabet_custom)
+            if not value.strip():
+                raise ValueError("Enter some text in the Alphabet workspace first.")
+            filename = filedialog.asksaveasfilename(
+                parent=self, title="Save alphabet PDF before printing", defaultextension=".pdf",
+                initialfile="alphabet-print.pdf", filetypes=[("PDF document", "*.pdf")],
+            )
+            if not filename:
+                return
+            path = Path(filename)
+            document = build_print_pdf(value, FONT_DIR / self.font_choice.get(), self.selected_font_family())
+            path.write_bytes(document)
+            self.alphabet_status.set("PDF saved / open it and choose Print (Ctrl+P)")
+            try:
+                if os.name == "nt":
+                    os.startfile(str(path.resolve()))
+                elif not webbrowser.open(path.resolve().as_uri()):
+                    raise OSError("No PDF viewer could be opened.")
+            except (OSError, webbrowser.Error):
+                messagebox.showinfo("PDF saved", f"Saved to {path}. Open it in a PDF viewer and choose Print.", parent=self)
+        except (KeyError, OSError, TTLibError, ValueError, webbrowser.Error) as error:
+            messagebox.showerror("Printing failed", str(error), parent=self)
 
     def clear_alphabet(self) -> None:
         self.alphabet_plain.delete("1.0", "end")

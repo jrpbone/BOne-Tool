@@ -1,2 +1,6 @@
 __pycache__
 secrets.md
+.venv/
+.venv-build/
+build/
+dist/

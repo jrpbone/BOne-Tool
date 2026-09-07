@@ -106,6 +106,9 @@ Files are read in 1 MiB chunks, allowing large files to be hashed without loadin
 - Converts compatible WOFF/WOFF2 fonts to a desktop TTF or OTF format.
 - Discovers compatible fonts placed beside `main.py` or directly inside `fonts/`.
 - Loads stored fonts privately into the application process on Windows rather than installing them system-wide.
+- Prints custom alphabet text with the selected font preserved: select **Print**, save the PDF, then choose **Print** (Ctrl+P) in the PDF viewer that opens. PDFs render the selected lettering at 300 DPI on A4 pages, preserve line breaks, and wrap long lines at 30 points. Lettering is rendered as images, so the PDF does not need installed fonts and its text is not selectable.
+
+Saved PDFs contain your rendered text and remain on disk until you delete them. They open locally and require no network connection.
 
 The selected font changes how characters look, not the characters themselves. For example, a custom-looking `A` remains Unicode `U+0041`; pasting it into software without the font displays an ordinary `A`.
 
@@ -237,8 +240,10 @@ It does not store message contents, passwords, tokens, hashes, or encryption key
 .
 |-- fonts/              Bundled fonts and imported-font storage
 |-- main.py             Desktop interface and core application logic
-|-- test_main.py        Utility and image-conversion tests
-|-- requirements.txt    Runtime dependencies
+|-- modules/            Supporting Python modules (including PDF printing)
+|-- tests/              Utility, image-conversion, and PDF-printing tests
+|-- tools/build.ps1     Windows release build script
+|-- requirements.txt    Runtime and build dependencies
 `-- README.md           Project documentation
 ```
 
@@ -254,16 +259,60 @@ Core functions in `main.py` include:
 
 ## Development
 
+### Build Windows releases
+
+Run from PowerShell with Python 3.10+ installed:
+
+```powershell
+.\tools\build.ps1
+# Or select a specific Python installation:
+.\tools\build.ps1 -Python 'C:\Python313\python.exe'
+```
+
+The script creates `.venv-build`, installs runtime dependencies and PyInstaller from `requirements.txt`,
+runs the tests, and builds both layouts:
+
+```text
+dist/
+`-- v1.0.0/
+    |-- portable/
+    |   `-- BOneTool.exe
+    `-- loose/
+        `-- BOneTool/
+            |-- BOneTool.exe
+            `-- _internal/   Supporting libraries and bundled fonts
+```
+
+Distribute just the portable EXE, or the entire loose `BOneTool` folder.
+Neither version requires Python on the destination computer. The single-file
+version extracts its bundled support files into a temporary directory at launch.
+Both versions store imported fonts in `%LOCALAPPDATA%\BOneTool\fonts` so imports
+survive restarts; existing settings remain in `~/.bonecipher.json`. Here,
+"portable" means a single distributable EXE, not that user data travels with it.
+
+The script asks for the release version, such as `1.0.0` or `1.1.0-beta.1`,
+and asks again if the input is invalid. For automated builds, you can still
+provide `-Version '1.0.0'` to skip the prompt.
+Each version gets its own directory, preserving other releases. Rebuilding the
+same version replaces that version's outputs. This version labels the release
+directory; it does not set Windows EXE version metadata.
+
+Subsequent builds can use `.\tools\build.ps1 -SkipInstall` to reuse
+installed build dependencies. Build intermediates stay in `build/v<version>/`.
+Build on Windows for the target Python architecture.
+Before distributing, launch both versions and check drag-and-drop, font selection,
+and PDF export on a Windows machine without Python installed.
+
 Compile the module without opening the interface:
 
 ```bash
-python -m py_compile main.py
+python -m compileall -q main.py modules
 ```
 
 Run the automated tests:
 
 ```bash
-python -m unittest -v
+python -m unittest discover -s tests -t . -v
 ```
 
 Run a minimal encryption round trip:
