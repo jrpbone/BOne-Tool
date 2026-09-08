@@ -524,7 +524,7 @@ class BOneTool(TkinterDnD.Tk):
             selectcolor=self.FIELD, activebackground=self.PANEL, activeforeground=self.TEXT,
         ).grid(row=0, column=7)
         self._button(controls, "Apply", self.render_ascii).grid(row=0, column=8, padx=(8, 0))
-        tk.Label(controls, text="PNG FONT SIZE", bg=self.PANEL, fg=self.MUTED, font=("Segoe UI Semibold", 8)).grid(row=1, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        tk.Label(controls, text="IMAGE FONT SIZE", bg=self.PANEL, fg=self.MUTED, font=("Segoe UI Semibold", 8)).grid(row=1, column=0, columnspan=2, sticky="w", pady=(10, 0))
         tk.Spinbox(
             controls, from_=8, to=48, textvariable=self.ascii_font_size, width=5,
             bg=self.FIELD, fg=self.TEXT, buttonbackground=self.FIELD, relief="flat",
@@ -559,7 +559,7 @@ class BOneTool(TkinterDnD.Tk):
         actions.grid_columnconfigure(1, weight=1)
         self._button(actions, "Import image", self.import_image).grid(row=0, column=0)
         self._button(actions, "Save text", self.save_ascii_text, secondary=True).grid(row=0, column=2)
-        self._button(actions, "Save PNG", self.save_ascii_png, secondary=True).grid(row=0, column=3, padx=(8, 0))
+        self._button(actions, "Save image", self.save_ascii_image, secondary=True).grid(row=0, column=3, padx=(8, 0))
         self._button(
             actions, "Clear", lambda: self.clear_ascii(), secondary=True
         ).grid(row=0, column=4, padx=(8, 0))
@@ -1092,7 +1092,7 @@ class BOneTool(TkinterDnD.Tk):
     def save_ascii_text(self) -> None:
         self.save_text(self._get(self.ascii_output), "Save ASCII art", self.ascii_status)
 
-    def save_ascii_png(self) -> None:
+    def save_ascii_image(self) -> None:
         value = self._get(self.ascii_output)
         try:
             image = ascii_to_image(
@@ -1104,16 +1104,23 @@ class BOneTool(TkinterDnD.Tk):
             return
         filename = filedialog.asksaveasfilename(
             parent=self, title="Save ASCII image", defaultextension=".png",
-            filetypes=(("PNG image", "*.png"),),
+            filetypes=(("PNG image", "*.png"), ("JPEG image", "*.jpg;*.jpeg")),
         )
-        if filename:
-            try:
-                image.save(filename)
-            except OSError as error:
-                messagebox.showerror("ASCII export failed", str(error), parent=self)
-                return
-            self.ascii_status.set(f"Saved {Path(filename).name}")
-            self.remember_file(filename)
+        try:
+            if filename:
+                suffix = Path(filename).suffix.lower()
+                if suffix not in {".png", ".jpg", ".jpeg"}:
+                    raise ValueError("Use a .png, .jpg, or .jpeg filename.")
+                if suffix in {".jpg", ".jpeg"}:
+                    image.save(filename, format="JPEG", quality=95, subsampling=0)
+                else:
+                    image.save(filename, format="PNG")
+                self.ascii_status.set(f"Saved {Path(filename).name}")
+                self.remember_file(filename)
+        except (OSError, ValueError) as error:
+            messagebox.showerror("ASCII export failed", str(error), parent=self)
+        finally:
+            image.close()
 
     def choose_ascii_color(self, foreground: bool) -> None:
         variable = self.ascii_foreground if foreground else self.ascii_background
@@ -1128,7 +1135,7 @@ class BOneTool(TkinterDnD.Tk):
         )
         if filename:
             self.ascii_font_path = filename
-            self.ascii_status.set(f"PNG font: {Path(filename).name}")
+            self.ascii_status.set(f"Image font: {Path(filename).name}")
 
     def clear_ascii(self) -> None:
         self._set(self.ascii_output, "")

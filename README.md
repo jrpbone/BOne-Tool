@@ -119,7 +119,7 @@ The selected font changes how characters look, not the characters themselves. Fo
 - Adjusts output width, brightness, contrast, inversion, and character set.
 - Provides Classic, Detailed, and Blocks character ramps.
 - Copies or saves the generated art as UTF-8 text.
-- Exports a styled PNG with a chosen TTF/OTF font, font size, text color, and background color.
+- Exports a styled PNG or JPEG with a chosen TTF/OTF font, font size, text color, and background color using **Save image**. The export renders the full artwork, including lines outside the visible editor area.
 - Uses the first frame when an animated image is imported.
 
 The source image is only read; conversion does not modify it.
@@ -174,7 +174,7 @@ Plaintext is displayed only after AES-GCM authenticates the encrypted data.
 
 1. Open **Image to ASCII** and import or drop an image.
 2. Adjust the conversion controls and select **Apply**.
-3. Copy the output, save it as text, or style and export it as a PNG.
+3. Copy the output, save it as text, or select **Save image** to export a styled PNG or JPEG.
 
 ## The `OC1` Format
 
