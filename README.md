@@ -15,9 +15,9 @@ All operations run inside the local Python process. No account, server, or netwo
 
 | Workspace | What it offers |
 | --- | --- |
-| **Encrypt / Decrypt** | Password-based AES-256-GCM encryption, authenticated `OC1` tokens, QR generation, and text import/export. |
+| **Encrypt / Decrypt** | **Text** view with portable OC1 tokens, QR, and import/export; **Conversations** with key-gated sessions, persistent modes, and same-length references. |
 | **Hash** | Live text digests, multi-file hashing, and checksum verification across eight algorithms. |
-| **Alphabet** | Side-by-side plain and custom-font editors with live synchronization and local font importing. |
+| **Alphabet** | Synchronized editors, font importing, an 8?96 pt size selector, and matching PDF export. |
 | **Image to ASCII** | Image preview, adjustable ASCII conversion, clipboard support, and text or styled PNG export. |
 | **Encoding** | Two-way Base64, hexadecimal, and URL percent-encoding transformations. |
 | **Settings** | Light and dark themes, editor sizing, and optional recent-file history. |
@@ -69,6 +69,8 @@ python main.py
 
 ### Authenticated text encryption
 
+Open **Encrypt / Decrypt > Text** for the default two-panel workspace.
+
 - Encrypts UTF-8 text with **AES-256-GCM**.
 - Derives the key from the password with **Scrypt**.
 - Generates a new random 16-byte salt and 12-byte nonce for every encryption.
@@ -84,7 +86,8 @@ python main.py
 ### Application appearance
 
 Use the **sun / moon** icon button in the application header to switch the entire
-workspace. The theme is also available under Settings and is saved for the next launch.
+workspace: the sun switches to Light mode, and the moon switches to Dark mode.
+The theme is also available under Settings and is saved for the next launch.
 Conversation key dialogs use the active theme, with masked input, Show/Hide, Enter to
 continue, and Escape to cancel.
 
@@ -97,13 +100,22 @@ The **Text** view remains the default.
 - **New conversation** creates another independent session in the left sidebar.
 - Select a saved conversation and enter its key to unlock its history.
 - Choose **As-is (session only)** for same-length output (the chat default), or **Portable OC1** for a standalone encrypted token.
-- Send `-e` once to enter Encrypt mode, then send messages without repeating the command.
-- Send `-d` once to enter Decrypt mode, then send outputs to decrypt until you switch back with `-e`.
 - The active mode appears beside the variant dropdown. New and reopened conversations start in Encrypt mode.
 - Trailing commands such as `message -e` and `output -d` also work and change the mode for subsequent messages. Decrypt mode accepts either an As-is reference from this conversation or an OC1 token using the current session key. The variant selector does not restrict decryption.
-- `-help` displays usage; `-lock` clears the displayed history, draft, and active key reference.
 - Enter sends; Shift+Enter inserts a line. Encrypted results appear on the right and decrypted results on the left, without labels or numbering. Click a bubble to copy it; **Copy latest** copies the most recent result.
 - Switching conversations, switching to Text, or leaving Encrypt / Decrypt locks the session.
+
+| Input | Behavior |
+| --- | --- |
+| `-e` | Switch to Encrypt mode for subsequent messages. |
+| `-d` | Switch to Decrypt mode for subsequent messages. |
+| Message or output without a command | Process using the active mode. |
+| `message -e` / `output -d` | Process this message and switch the mode for later messages. |
+| `-help` | Show command help without changing the mode. |
+| `-lock` | Lock the session and clear its displayed history, draft, and active key reference. |
+
+Mode commands do not add chat bubbles or save extra history entries. Help is available
+through `-help`; no permanent guide appears below the variant dropdown.
 
 **As-is output:** `hello -e` produces a five-character reference such as `a7Qm2`.
 Sending that reference followed by `-d` in the original unlocked conversation restores
@@ -120,8 +132,8 @@ messages have 62 available references; when these run out, start a new conversat
 use Portable OC1. Short references are identifiers, not passwords; the conversation key
 and encrypted storage provide protection.
 
-History saves automatically after each successful command, encrypted with the conversation key.
-This includes results displayed with the trailing `-d` command; decrypted text is not written to the history file in plaintext.
+An encrypted history file is created with each new conversation and updated after every
+successfully processed message. This includes results displayed in Decrypt mode; decrypted text is not written to the history file in plaintext.
 Conversations survive restarts in `%LOCALAPPDATA%/BOneTool/conversations` on Windows
 (or `~/BOneTool/conversations` when LOCALAPPDATA is unavailable). Keys are not saved.
 Session identifiers, file sizes, and filesystem timestamps are visible on disk.
@@ -153,7 +165,9 @@ Files are read in 1 MiB chunks, allowing large files to be hashed without loadin
 - Converts compatible WOFF/WOFF2 fonts to a desktop TTF or OTF format.
 - Discovers compatible fonts placed beside `main.py` or directly inside `fonts/`.
 - Loads stored fonts privately into the application process on Windows rather than installing them system-wide.
-- Prints custom alphabet text with the selected font preserved: select **Print**, save the PDF, then choose **Print** (Ctrl+P) in the PDF viewer that opens. PDFs render the selected lettering at 300 DPI on A4 pages, preserve line breaks, and wrap long lines at the selected font size (8 to 96 points, default 30). The SIZE (PT) selector updates both the Custom Alphabet preview and PDF output. Lettering is rendered as images, so the PDF does not need installed fonts and its text is not selectable.
+- Select **SIZE (PT)** to change the Custom Alphabet preview and PDF output together (8?96 points, default 30). This size is separate from the shared editor size in Settings and resets when the app restarts.
+- **Copy letters** and **Print** sit side by side below the custom editor.
+- Prints custom alphabet text with the selected font preserved: select **Print**, save the PDF, then choose **Print** (Ctrl+P) in the PDF viewer that opens. PDFs render the selected lettering at 300 DPI on A4 pages, preserve line breaks, and wrap long lines at the selected font size (8 to 96 points, default 30). Lettering is rendered as images, so the PDF does not need installed fonts and its text is not selectable.
 
 Saved PDFs contain your rendered text and remain on disk until you delete them. They open locally and require no network connection.
 
@@ -194,7 +208,7 @@ Encoding changes representation only. It does **not** provide encryption or secr
 
 ### Encrypt a message
 
-1. Open **Encrypt / Decrypt**.
+1. Open **Encrypt / Decrypt > Text**.
 2. Enter a long, unique password or passphrase.
 3. Enter the message in the left panel.
 4. Select **Encrypt**.
@@ -204,11 +218,24 @@ Encrypting identical text twice creates different tokens because every operation
 
 ### Decrypt a message
 
+In **Encrypt / Decrypt > Text**:
+
 1. Paste the complete `OC1.` token into the left panel.
 2. Enter the original password.
 3. Select **Decrypt**.
 
 Plaintext is displayed only after AES-GCM authenticates the encrypted data.
+
+### Use a conversation
+
+1. Open **Encrypt / Decrypt > Conversations**, create a session, and confirm its key.
+2. Leave **As-is (session only)** selected, send `-e`, then send `hello`.
+3. Click the five-character bubble on the right to copy its reference.
+4. Send `-d`, then paste and send that reference. `hello` appears on the left.
+5. Send more references to decrypt, or send `-e` to resume encrypting messages.
+6. Use **Lock** or leave the workspace. Reopening the saved session requires its key.
+
+Select **Portable OC1** before encrypting if the output must be usable outside the saved conversation.
 
 ### Verify a downloaded file
 
@@ -279,7 +306,19 @@ Preferences are stored in `~/.bonecipher.json`. This file can contain:
 - Whether recent-file history is enabled
 - Up to ten absolute file paths, only when history is enabled
 
-It does not store message contents, passwords, tokens, hashes, or encryption keys. Conversation history is automatically saved in encrypted form after each successful Send. Other user-generated output is written only after an explicit save action. Imported fonts are stored in `fonts/`, and compatible font files placed beside `main.py` are copied there when discovered.
+The preferences file does not store message contents, passwords, tokens, hashes, or encryption keys.
+
+| Data | Location and behavior |
+| --- | --- |
+| Conversation histories | `%LOCALAPPDATA%/BOneTool/conversations/*.oc1` (fallback `~/BOneTool/conversations`); created for new sessions and updated after successful messages, encrypted with the session key. Independent of recent-file history. |
+| As-is reference mappings | Inside the encrypted conversation history, together with their OC1 ciphertext. Required to resolve short outputs after reopening. |
+| Imported fonts | `fonts/` for source runs; `%LOCALAPPDATA%/BOneTool/fonts` for packaged builds. |
+| Exported text, images, PDFs | Locations chosen through the save dialogs. |
+
+Conversation keys are held while a session is unlocked and are not saved. Locking clears the
+active key reference and displayed contents; it does not erase saved histories or clear content
+already copied to the system clipboard. Other user-generated output requires an explicit save.
+Compatible font files placed beside `main.py` are copied into the source font directory when discovered.
 
 ## Project Structure
 
@@ -287,8 +326,18 @@ It does not store message contents, passwords, tokens, hashes, or encryption key
 .
 |-- fonts/              Bundled fonts and imported-font storage
 |-- main.py             Application shell, shared UI, Alphabet, and Settings
-|-- modules/            Feature controllers, registry, and PDF printing
-|-- tests/              Utility, image-conversion, and PDF-printing tests
+|-- modules/
+|   |-- registry.py          Feature registration and navigation order
+|   |-- crypto.py            Text encryption workspace and chat integration
+|   |-- crypto_chat.py       Conversation UI, commands, and mode state
+|   |-- chat_store.py        Encrypted history storage and message processing
+|   |-- session_reference.py Same-length session references
+|   |-- key_dialog.py        Themed key entry and confirmation dialogs
+|   |-- hashing.py           Hashing workspace and utilities
+|   |-- image_ascii.py       ASCII conversion workspace and exports
+|   |-- encoding.py          Base64, hex, and URL workspace
+|   `-- alphabet_print.py    A4 PDF rendering at the selected font size
+|-- tests/              Processing, UI integration, storage, theme, and PDF tests
 |-- tools/build.ps1     Windows release build script
 |-- requirements.txt    Runtime and build dependencies
 `-- README.md           Project documentation
@@ -323,7 +372,11 @@ Follow the same structure as `modules/crypto.py`, `modules/hashing.py`,
 5. Import the controller in `modules/registry.py` and append it to `FEATURE_TYPES`.
    The shell creates its navigation button and workspace automatically. Add explicit
    shell routing only if the feature needs file-drop or recent-file integration.
-6. Add processing tests and exercise workspace integration in `tests/`.
+6. Implement an optional `on_leave()` hook when the feature needs to clear sensitive
+   state on navigation. Conversations use it to lock the current session.
+7. Reuse `modules/key_dialog.py` for themed key prompts. Use the app palette for
+   selections, hover states, borders, and text so both themes remain consistent.
+8. Add processing tests and exercise workspace integration in `tests/`.
 
 Feature modules must not import `main` at runtime or access other controllers'
 internal state. A `TYPE_CHECKING` import is allowed for the app type annotation.
@@ -375,7 +428,8 @@ Subsequent builds can use `.\tools\build.ps1 -SkipInstall` to reuse
 installed build dependencies. Build intermediates stay in `build/v<version>/`.
 Build on Windows for the target Python architecture.
 Before distributing, launch both versions and check drag-and-drop, font selection,
-and PDF export on a Windows machine without Python installed.
+PDF export at different sizes, Light/Dark switching, key dialogs, and conversation
+locking/reopening on a Windows machine without Python installed.
 
 Compile the module without opening the interface:
 
