@@ -79,6 +79,39 @@ class CryptoFeature:
         self.crypto_status = tk.StringVar(master=app, value="AES-256-GCM / Scrypt / OC1")
 
     def build(self, parent: tk.Widget) -> tk.Frame:
+        from .crypto_chat import CryptoChat
+
+        page = tk.Frame(parent, bg=self.app.BG)
+        page.grid_columnconfigure(0, weight=1)
+        page.grid_rowconfigure(1, weight=1)
+        modes = tk.Frame(page, bg=self.app.BG)
+        modes.grid(row=0, column=0, sticky="w", pady=(0, 12))
+        self.mode = "classic"
+        self.app._button(modes, "Text", lambda: self.select_mode("classic"), secondary=True).pack(side="left")
+        self.app._button(modes, "Conversations", lambda: self.select_mode("chat"), secondary=True).pack(side="left", padx=8)
+        self.classic_page = self.build_classic(page)
+        self.chat = CryptoChat(self.app)
+        self.chat_page = self.chat.build(page)
+        for workspace in (self.classic_page, self.chat_page):
+            workspace.grid(row=1, column=0, sticky="nsew")
+        self.classic_page.tkraise()
+        return page
+
+    def select_mode(self, mode: str) -> None:
+        if mode == "classic":
+            self.chat.lock()
+            self.classic_page.tkraise()
+        else:
+            self.chat_page.tkraise()
+        self.mode = mode
+        self.focus()
+        if mode == "chat":
+            self.chat.enter()
+
+    def on_leave(self) -> None:
+        self.chat.lock()
+
+    def build_classic(self, parent: tk.Widget) -> tk.Frame:
         page = tk.Frame(parent, bg=self.app.BG)
         page.grid_columnconfigure(0, weight=1)
         page.grid_rowconfigure(1, weight=1)
@@ -165,6 +198,7 @@ class CryptoFeature:
         except (OSError, UnicodeError) as error:
             messagebox.showerror("Text import failed", str(error), parent=self.app)
             return
+        self.select_mode("classic")
         self.crypto_input.delete("1.0", "end")
         self.crypto_input.insert("1.0", text)
         self.crypto_status.set(f"Imported {Path(filename).name}")
@@ -238,4 +272,7 @@ class CryptoFeature:
         self.crypto_input.focus_set()
 
     def focus(self) -> None:
-        self.crypto_input.focus_set()
+        if self.mode == "chat":
+            self.chat.focus()
+        else:
+            self.crypto_input.focus_set()

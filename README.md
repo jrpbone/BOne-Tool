@@ -81,6 +81,53 @@ python main.py
 > [!IMPORTANT]
 > The password is never stored in an `OC1` token. If it is lost, BOne Tool cannot recover the plaintext.
 
+### Application appearance
+
+Use the **sun / moon** icon button in the application header to switch the entire
+workspace. The theme is also available under Settings and is saved for the next launch.
+Conversation key dialogs use the active theme, with masked input, Show/Hide, Enter to
+continue, and Escape to cancel.
+
+### Encrypted conversations
+
+Open **Encrypt / Decrypt > Conversations** to use the command-style chat workspace.
+The **Text** view remains the default.
+
+- The first conversation prompts for a key and confirmation (at least eight characters).
+- **New conversation** creates another independent session in the left sidebar.
+- Select a saved conversation and enter its key to unlock its history.
+- Choose **As-is (session only)** for same-length output (the chat default), or **Portable OC1** for a standalone encrypted token.
+- Send `-e` once to enter Encrypt mode, then send messages without repeating the command.
+- Send `-d` once to enter Decrypt mode, then send outputs to decrypt until you switch back with `-e`.
+- The active mode appears beside the variant dropdown. New and reopened conversations start in Encrypt mode.
+- Trailing commands such as `message -e` and `output -d` also work and change the mode for subsequent messages. Decrypt mode accepts either an As-is reference from this conversation or an OC1 token using the current session key. The variant selector does not restrict decryption.
+- `-help` displays usage; `-lock` clears the displayed history, draft, and active key reference.
+- Enter sends; Shift+Enter inserts a line. Encrypted results appear on the right and decrypted results on the left, without labels or numbering. Click a bubble to copy it; **Copy latest** copies the most recent result.
+- Switching conversations, switching to Text, or leaving Encrypt / Decrypt locks the session.
+
+**As-is output:** `hello -e` produces a five-character reference such as `a7Qm2`.
+Sending that reference followed by `-d` in the original unlocked conversation restores
+`hello`. The reference points to an OC1-encrypted message inside the saved encrypted
+history; it is not standalone ciphertext. Keep the original conversation file and its
+key. Sharing just the reference and key is insufficient to decrypt it elsewhere.
+Old histories containing portable OC1 messages continue to open normally.
+
+Length is counted in Unicode code points (Python `len`), including spaces and internal
+line breaks in the message, excluding the command and its separating whitespace.
+Combined emoji and combining accents may contain multiple code points per visible symbol.
+References use letters and digits and are unique within a conversation. One-character
+messages have 62 available references; when these run out, start a new conversation or
+use Portable OC1. Short references are identifiers, not passwords; the conversation key
+and encrypted storage provide protection.
+
+History saves automatically after each successful command, encrypted with the conversation key.
+This includes results displayed with the trailing `-d` command; decrypted text is not written to the history file in plaintext.
+Conversations survive restarts in `%LOCALAPPDATA%/BOneTool/conversations` on Windows
+(or `~/BOneTool/conversations` when LOCALAPPDATA is unavailable). Keys are not saved.
+Session identifiers, file sizes, and filesystem timestamps are visible on disk.
+There is no key recovery; retain your keys to reopen saved conversations.
+Commands are interpreted locally and do not execute shell commands or contact a chatbot service.
+
 ### Hashing and verification
 
 BOne Tool updates text hashes as you type and reports both character and UTF-8 byte counts.
@@ -106,7 +153,7 @@ Files are read in 1 MiB chunks, allowing large files to be hashed without loadin
 - Converts compatible WOFF/WOFF2 fonts to a desktop TTF or OTF format.
 - Discovers compatible fonts placed beside `main.py` or directly inside `fonts/`.
 - Loads stored fonts privately into the application process on Windows rather than installing them system-wide.
-- Prints custom alphabet text with the selected font preserved: select **Print**, save the PDF, then choose **Print** (Ctrl+P) in the PDF viewer that opens. PDFs render the selected lettering at 300 DPI on A4 pages, preserve line breaks, and wrap long lines at 30 points. Lettering is rendered as images, so the PDF does not need installed fonts and its text is not selectable.
+- Prints custom alphabet text with the selected font preserved: select **Print**, save the PDF, then choose **Print** (Ctrl+P) in the PDF viewer that opens. PDFs render the selected lettering at 300 DPI on A4 pages, preserve line breaks, and wrap long lines at the selected font size (8 to 96 points, default 30). The SIZE (PT) selector updates both the Custom Alphabet preview and PDF output. Lettering is rendered as images, so the PDF does not need installed fonts and its text is not selectable.
 
 Saved PDFs contain your rendered text and remain on disk until you delete them. They open locally and require no network connection.
 
@@ -232,7 +279,7 @@ Preferences are stored in `~/.bonecipher.json`. This file can contain:
 - Whether recent-file history is enabled
 - Up to ten absolute file paths, only when history is enabled
 
-It does not store message contents, passwords, tokens, hashes, or encryption keys. User-generated output is written only after an explicit save action. Imported fonts are stored in `fonts/`, and compatible font files placed beside `main.py` are copied there when discovered.
+It does not store message contents, passwords, tokens, hashes, or encryption keys. Conversation history is automatically saved in encrypted form after each successful Send. Other user-generated output is written only after an explicit save action. Imported fonts are stored in `fonts/`, and compatible font files placed beside `main.py` are copied there when discovered.
 
 ## Project Structure
 

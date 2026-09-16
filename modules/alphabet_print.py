@@ -7,8 +7,10 @@ from fontTools.ttLib import TTCollection, TTFont
 from PIL import Image, ImageDraw, ImageFont
 
 
-def build_print_pdf(text: str, font_path: Path, family: str) -> bytes:
+def build_print_pdf(text: str, font_path: Path, family: str, font_size: int = 30) -> bytes:
     """Render A4 pages at 300 DPI, preserving fonts without system installation."""
+    if isinstance(font_size, bool) or not isinstance(font_size, int) or not 8 <= font_size <= 96:
+        raise ValueError("Font size must be a whole number from 8 to 96 points.")
     if not text.strip():
         raise ValueError("Enter some text in the Alphabet workspace first.")
     fonts = (TTCollection(font_path).fonts if font_path.suffix.lower() == ".ttc"
@@ -24,14 +26,15 @@ def build_print_pdf(text: str, font_path: Path, family: str) -> bytes:
         buffer = BytesIO()
         selected.save(buffer)
         buffer.seek(0)
-        font = ImageFont.truetype(buffer, 125)  # 30 points at 300 DPI
+        pixel_size = round(font_size * 300 / 72)
+        font = ImageFont.truetype(buffer, pixel_size)
     finally:
         for item in fonts:
             item.close()
 
     width, height, margin = 2480, 3508, 236
     ascent, descent = font.getmetrics()
-    line_height = max(188, ascent + descent)
+    line_height = max(round(pixel_size * 1.5), ascent + descent)
     pages = []
     page = Image.new("RGB", (width, height), "white")
     pages.append(page)

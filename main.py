@@ -28,9 +28,20 @@ FONT_DIR = (
 FONT_EXTENSIONS = {".ttf", ".otf", ".ttc", ".woff", ".woff2"}
 DESKTOP_FONT_EXTENSIONS = {".ttf", ".otf", ".ttc"}
 THEMES = {
-    "Dark": {"BG": "#0b1020", "PANEL": "#121a2d", "FIELD": "#182238", "TEXT": "#eef2ff", "MUTED": "#8d9ab5", "ACCENT": "#f6b94a"},
-    "Light": {"BG": "#eef1f6", "PANEL": "#ffffff", "FIELD": "#dfe5ee", "TEXT": "#182238", "MUTED": "#61708a", "ACCENT": "#c87a00"},
+    "Dark": {
+        "BG": "#0b1020", "PANEL": "#121a2d", "FIELD": "#182238", "TEXT": "#eef2ff",
+        "MUTED": "#8d9ab5", "ACCENT": "#f6b94a", "SELECTION": "#344466",
+        "HOVER": "#25324d", "ACCENT_HOVER": "#ffd078", "BORDER": "#3b4a65",
+        "SUCCESS": "#5ee0a0", "ERROR": "#ff7b84",
+    },
+    "Light": {
+        "BG": "#f2f5fa", "PANEL": "#ffffff", "FIELD": "#e7edf5", "TEXT": "#1c2940",
+        "MUTED": "#596980", "ACCENT": "#925500", "SELECTION": "#c6d9ef",
+        "HOVER": "#d3deec", "ACCENT_HOVER": "#784600", "BORDER": "#b5c3d5",
+        "SUCCESS": "#167346", "ERROR": "#b32635",
+    },
 }
+
 SETTINGS_PATH = Path.home() / ".bonecipher.json"
 
 
@@ -87,6 +98,7 @@ class BOneTool(TkinterDnD.Tk):
         self.recent_files = recent_files
 
         self.font_choice = tk.StringVar()
+        self.alphabet_font_size = tk.IntVar(value=30)
         self.alphabet_status = tk.StringVar(value="Loading fonts...")
         self.theme_choice = tk.StringVar(value=theme)
         self.editor_font_size = tk.IntVar(value=editor_size)
@@ -112,6 +124,10 @@ class BOneTool(TkinterDnD.Tk):
             darkcolor=self.FIELD,
             padding=10,
         )
+        self.option_add("*TCombobox*Listbox.background", self.FIELD)
+        self.option_add("*TCombobox*Listbox.foreground", self.TEXT)
+        self.option_add("*TCombobox*Listbox.selectBackground", self.SELECTION)
+        self.option_add("*TCombobox*Listbox.selectForeground", self.TEXT)
         style.map(
             "Cipher.TCombobox",
             fieldbackground=[("readonly", self.FIELD)],
@@ -124,10 +140,18 @@ class BOneTool(TkinterDnD.Tk):
         shell = tk.Frame(self, bg=self.BG, padx=42, pady=30)
         shell.pack(fill="both", expand=True)
         shell.grid_columnconfigure(0, weight=1)
-        shell.grid_rowconfigure(1, weight=1)
+        shell.grid_rowconfigure(2, weight=1)
 
+        header = tk.Frame(shell, bg=self.BG)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 18))
+        tk.Label(header, text="BOne Tool", bg=self.BG, fg=self.TEXT,
+                 font=("Segoe UI Semibold", 18)).pack(side="left")
+        self.theme_button = self._button(header, "", self.toggle_theme, secondary=True)
+        self.theme_button.configure(font=("Segoe UI Symbol", 18), width=2, padx=6, pady=2)
+        self.theme_button.pack(side="right")
+        self.theme_button.configure(text="\u2600" if self.theme_choice.get() == "Dark" else "\u263e")
         nav = tk.Frame(shell, bg=self.BG)
-        nav.grid(row=0, column=0, sticky="w", pady=(0, 16))
+        nav.grid(row=1, column=0, sticky="w", pady=(0, 16))
         workspaces = [(feature.page_id, feature.title, feature.build) for feature in self.features.values()]
         workspaces.insert(2, ("alphabet", "Alphabet", self._build_alphabet_page))
         workspaces.append(("settings", "Settings", self._build_settings_page))
@@ -139,7 +163,7 @@ class BOneTool(TkinterDnD.Tk):
             button.grid(row=0, column=column, padx=(8 if column else 0, 0))
 
         pages = tk.Frame(shell, bg=self.BG)
-        pages.grid(row=1, column=0, sticky="nsew")
+        pages.grid(row=2, column=0, sticky="nsew")
         pages.grid_columnconfigure(0, weight=1)
         pages.grid_rowconfigure(0, weight=1)
         self.pages = {key: build(pages) for key, _title, build in workspaces}
@@ -167,8 +191,16 @@ class BOneTool(TkinterDnD.Tk):
         self.font_selector.bind("<<ComboboxSelected>>", self.select_font)
         self.font_selector.bind("<Button-1>", lambda _event: self.refresh_fonts())
         self._button(font_card, "Import fonts", self.import_fonts, secondary=True).grid(
-            row=0, column=2, padx=(10, 0)
+            row=0, column=4, padx=(10, 0)
         )
+        tk.Label(font_card, text="SIZE (PT)", bg=self.PANEL, fg=self.MUTED,
+                 font=("Segoe UI Semibold", 9)).grid(row=0, column=2, padx=(14, 8))
+        self.alphabet_size_selector = ttk.Combobox(
+            font_card, textvariable=self.alphabet_font_size, values=tuple(range(8, 97)),
+            state="readonly", style="Cipher.TCombobox", width=4,
+        )
+        self.alphabet_size_selector.grid(row=0, column=3)
+        self.alphabet_size_selector.bind("<<ComboboxSelected>>", self.select_font)
 
         workspace = tk.Frame(page, bg=self.BG)
         workspace.grid(row=1, column=0, sticky="nsew")
@@ -196,8 +228,8 @@ class BOneTool(TkinterDnD.Tk):
         custom_card.grid_rowconfigure(2, minsize=106)
         self.alphabet_custom = tk.Text(
             custom_card, wrap="word", undo=True, bg=self.FIELD, fg=self.ACCENT,
-            insertbackground=self.ACCENT, selectbackground="#4b3b22", relief="flat",
-            padx=16, pady=14, width=1, height=1, font=(self.selected_font_family(), 30),
+            insertbackground=self.ACCENT, selectbackground=self.SELECTION, selectforeground=self.TEXT, relief="flat",
+            padx=16, pady=14, width=1, height=1, font=(self.selected_font_family(), self.alphabet_font_size.get()),
         )
         self.alphabet_custom.grid(row=1, column=0, sticky="nsew", padx=18, pady=(0, 14))
         self.alphabet_custom.bind("<KeyRelease>", lambda _event: self.sync_alphabet(self.alphabet_custom))
@@ -208,7 +240,7 @@ class BOneTool(TkinterDnD.Tk):
         self._button(
             custom_actions, "Copy letters", lambda: self.copy_text(self.alphabet_custom, self.alphabet_status)
         ).grid(row=0, column=1)
-        self._button(custom_actions, "Print", self.print_alphabet).grid(row=1, column=1, pady=(8, 0))
+        self._button(custom_actions, "Print", self.print_alphabet).grid(row=0, column=2, padx=(8, 0))
         return page
 
 
@@ -269,7 +301,7 @@ class BOneTool(TkinterDnD.Tk):
         return tk.Text(
             parent, wrap="word", undo=not readonly, bg=self.FIELD,
             fg=self.ACCENT if accent else self.TEXT, insertbackground=self.ACCENT,
-            selectbackground="#344466", relief="flat", padx=16, pady=14, width=1, height=1,
+            selectbackground=self.SELECTION, selectforeground=self.TEXT, relief="flat", padx=16, pady=14, width=1, height=1,
             font=("Cascadia Mono", self.editor_font_size.get()), state="disabled" if readonly else "normal",
         )
 
@@ -277,12 +309,16 @@ class BOneTool(TkinterDnD.Tk):
         return tk.Button(
             parent, text=text, command=command, bg=self.FIELD if secondary else self.ACCENT,
             fg=self.TEXT if secondary else self.BG,
-            activebackground="#25324d" if secondary else "#ffd078",
+            activebackground=self.HOVER if secondary else self.ACCENT_HOVER,
             activeforeground=self.TEXT if secondary else self.BG, relief="flat", cursor="hand2",
             padx=14, pady=8, font=("Segoe UI Semibold", 9),
         )
 
     def show_page(self, name: str) -> None:
+        if name != self.current_page:
+            previous = self.features.get(self.current_page)
+            if previous is not None and hasattr(previous, "on_leave"):
+                previous.on_leave()
         self.current_page = name
         self.pages[name].tkraise()
         for page_name, button in self.nav_buttons.items():
@@ -392,7 +428,7 @@ class BOneTool(TkinterDnD.Tk):
     def select_font(self, _event=None) -> None:
         family = self.selected_font_family()
         if hasattr(self, "alphabet_custom"):
-            self.alphabet_custom.configure(font=(family, 30))
+            self.alphabet_custom.configure(font=(family, self.alphabet_font_size.get()))
             self.alphabet_status.set(f"{family} / {len(self._get(self.alphabet_custom)):,} characters")
 
     @staticmethod
@@ -454,7 +490,10 @@ class BOneTool(TkinterDnD.Tk):
             if not filename:
                 return
             path = Path(filename)
-            document = build_print_pdf(value, FONT_DIR / self.font_choice.get(), self.selected_font_family())
+            document = build_print_pdf(
+                value, FONT_DIR / self.font_choice.get(), self.selected_font_family(),
+                font_size=self.alphabet_font_size.get(),
+            )
             path.write_bytes(document)
             self.alphabet_status.set("PDF saved / open it and choose Print (Ctrl+P)")
             try:
@@ -491,6 +530,10 @@ class BOneTool(TkinterDnD.Tk):
             self.show_page("hash")
             self.features["hash"].display_file_hashes(filenames)
 
+    def toggle_theme(self) -> None:
+        self.theme_choice.set("Light" if self.BG == THEMES["Dark"]["BG"] else "Dark")
+        self.apply_settings()
+
     def apply_settings(self) -> None:
         try:
             editor_size = self.editor_font_size.get()
@@ -510,11 +553,12 @@ class BOneTool(TkinterDnD.Tk):
             if isinstance(widget, tk.Text) and widget is not self.alphabet_custom:
                 widget.configure(font=("Cascadia Mono", editor_size))
         self._style_widgets()
+        self.theme_button.configure(text="\u2600" if self.theme_choice.get() == "Dark" else "\u263e")
         self.show_page(self.current_page)
         self.save_settings()
 
     def _recolor_widget(self, widget: tk.Widget, replacements: dict[str, str]) -> None:
-        for option in ("background", "foreground", "insertbackground", "selectbackground", "activebackground", "activeforeground", "troughcolor"):
+        for option in ("background", "foreground", "insertbackground", "selectbackground", "activebackground", "activeforeground", "troughcolor", "selectforeground", "selectcolor", "buttonbackground", "highlightbackground", "highlightcolor"):
             if option in widget.keys():
                 current = str(widget.cget(option))
                 if current in replacements:

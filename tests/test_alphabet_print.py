@@ -17,6 +17,17 @@ def font_family(path):
 
 
 class AlphabetPrintTest(unittest.TestCase):
+    def test_font_size_changes_pdf_pagination(self):
+        path = next(FONT_DIR.glob("*.ttf"))
+        family = font_family(path)
+        small = build_print_pdf("Hello\n" * 20, path, family, font_size=12)
+        large = build_print_pdf("Hello\n" * 20, path, family, font_size=60)
+        self.assertIn(b"/Count 1", small)
+        self.assertRegex(large, rb"/Count [2-9]\b")
+        for size in (0, 97, 12.5, True):
+            with self.subTest(size=size), self.assertRaises(ValueError):
+                build_print_pdf("Hello", path, family, font_size=size)
+
     def test_bundled_fonts_generate_pdf(self):
         for path in FONT_DIR.iterdir():
             if path.suffix.lower() not in {".ttf", ".otf"}:
