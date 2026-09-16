@@ -239,15 +239,15 @@ It does not store message contents, passwords, tokens, hashes, or encryption key
 ```text
 .
 |-- fonts/              Bundled fonts and imported-font storage
-|-- main.py             Desktop interface and core application logic
-|-- modules/            Supporting Python modules (including PDF printing)
+|-- main.py             Application shell, shared UI, Alphabet, and Settings
+|-- modules/            Feature controllers, registry, and PDF printing
 |-- tests/              Utility, image-conversion, and PDF-printing tests
 |-- tools/build.ps1     Windows release build script
 |-- requirements.txt    Runtime and build dependencies
 `-- README.md           Project documentation
 ```
 
-Core functions in `main.py` include:
+Feature processing functions live in their corresponding modules and remain available from `main.py` for compatibility:
 
 - `encrypt_text(text, password)` — creates an authenticated `OC1` token.
 - `decrypt_text(token, password)` — authenticates and decrypts a token.
@@ -256,6 +256,33 @@ Core functions in `main.py` include:
 - `image_to_ascii(...)` and `ascii_to_image(...)` — convert between images and ASCII art.
 - `transform_text(text, method, decode)` — handles Base64, hex, and URL transformations.
 - `BOneTool` — builds and controls the desktop application.
+
+## Adding future features
+
+Follow the same structure as `modules/crypto.py`, `modules/hashing.py`,
+`modules/image_ascii.py`, and `modules/encoding.py`:
+
+1. Create `modules/<feature>.py`. Keep processing functions independent of Tk widgets
+   so they can be tested without opening the app.
+2. Add a controller with a unique `page_id`, a navigation `title`, and
+   `__init__(self, app)`. Store its own state and widgets on the controller; create
+   Tk variables with `master=app`.
+3. Implement `build(self, parent)` returning the workspace frame and `focus(self)`
+   focusing its primary widget. Bind actions to controller methods.
+4. Reuse `self.app._card`, `_button`, `_text_box`, `_get`, `_set`, `copy_text`,
+   `save_text`, and `remember_file` for shared UI and services. Read theme colors
+   through `self.app` so theme changes continue to work. Use `parent=self.app`
+   for dialogs.
+5. Import the controller in `modules/registry.py` and append it to `FEATURE_TYPES`.
+   The shell creates its navigation button and workspace automatically. Add explicit
+   shell routing only if the feature needs file-drop or recent-file integration.
+6. Add processing tests and exercise workspace integration in `tests/`.
+
+Feature modules must not import `main` at runtime or access other controllers'
+internal state. A `TYPE_CHECKING` import is allowed for the app type annotation.
+The shell owns navigation, themes, shared file routing, and settings; each tool
+owns its inputs, outputs, callbacks, and processing. Alphabet and Settings still
+live in the shell.
 
 ## Development
 
